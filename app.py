@@ -8,14 +8,15 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import io
+from flask_cors import CORS
 
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Load your CNN and ResNet50 models
-cnn_model = tf.keras.models.load_model(r'C:\\newprograms\\All_Projects\\Corals_new\\cnn_model.h5')
-resnet_model = tf.keras.models.load_model(r'C:\\newprograms\\All_Projects\\Corals_new\\resnet_model.h5')
+cnn_model = tf.keras.models.load_model(r'C:\newprograms\\All_Projects\\Corals_new\\Model\\cnn_model.h5')
+resnet_model = tf.keras.models.load_model(r'C:\\newprograms\\All_Projects\\Corals_new\\Model\\resnet_model.h5')
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -92,8 +93,10 @@ def predict():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
+    from waitress import serve  # Use production server
+    serve(app, host="0.0.0.0", port=5000)
     #app.run(debug=True)
-    app.run(debug=True, host ="0.0.0.0", port=5000)
+    #app.run(debug=True, host ="0.0.0.0", port=5000)
     
 
     
