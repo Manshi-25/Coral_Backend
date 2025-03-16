@@ -7,7 +7,8 @@ import numpy as np
 import logging
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-
+import gdown
+import requests
 import io
 from flask_cors import CORS
 from waitress import serve
@@ -15,15 +16,44 @@ from waitress import serve
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-base_dir = os.path.dirname(os.path.abspath(__file__))
-cnn_model_path = os.path.join(base_dir, 'Model', 'cnn_model.h5')
-resnet_model_path = os.path.join(base_dir, 'Model', 'resnet_model.h5')
 
+'''base_dir = os.path.dirname(os.path.abspath(__file__))
+model_dir = os.path.join(base_dir, 'Model')
+os.makedirs(model_dir, exist_ok=True)  # Ensure the Model directory exists
+
+cnn_model_path = os.path.join(model_dir, 'cnn_model.h5')
+resnet_model_path = os.path.join(model_dir, 'Model', 'resnet_model.h5')'''
+
+#google drive id
+cnn_model_id = "1pjOtsySu8LPLMvdI51SdkVJLQvagy8jq"
+#cnn_model_url =f"https://drive.google.com/uc?id={cnn_model_id}"
+resnet_model_id = "10h0M4NUtbBMWHKJ8JwQZaCpJlO42877h"
+#resnet_model_url = f"https://drive.google.com/uc?id={resnet_model_id}"
+
+# Function to download model from Google Drive
+def download_model_from_drive(model_id, filename):
+    url = f"https://drive.google.com/uc?id={model_id}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open(filename, "wb") as f:
+            f.write(response.content)
+        print(f"Model {filename} downloaded successfully.")
+    else:
+        print(f"Failed to download {filename}.")
+
+# Download and load models
+if not os.path.exists("cnn_model.h5"):
+    download_model_from_drive(cnn_model_id, "cnn_model.h5")
+if not os.path.exists("resnet_model.h5"):
+    download_model_from_drive(resnet_model_id, "resnet_model.h5")
+
+cnn_model = tf.keras.models.load_model("cnn_model.h5")
+resnet_model = tf.keras.models.load_model("resnet_model.h5")
 
 # Load your CNN and ResNet50 models
 #cnn_model = tf.keras.models.load_model(r'Model\\cnn_model.h5')
-cnn_model = tf.keras.models.load_model(cnn_model_path)
-resnet_model = tf.keras.models.load_model(resnet_model_path)
+#cnn_model = tf.keras.models.load_model(cnn_model_path)
+#resnet_model = tf.keras.models.load_model(resnet_model_path)
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
