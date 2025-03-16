@@ -1,12 +1,13 @@
-
+import os
 from flask import Flask, request, jsonify
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 from PIL import Image
 import numpy as np
 import logging
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-import os
+
 import io
 from flask_cors import CORS
 from waitress import serve
