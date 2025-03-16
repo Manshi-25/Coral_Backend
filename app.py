@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 import os
 import io
 from flask_cors import CORS
-
+from waitress import serve
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -93,8 +93,10 @@ def predict():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    from waitress import serve  # Use production server
-    serve(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get('PORT', 8000))
+    serve(app, host='0.0.0.0', port=port)
+    #from waitress import serve  # Use production server
+    #serve(app, host="0.0.0.0", port=8000)
     #app.run(debug=True)
     #app.run(debug=True, host ="0.0.0.0", port=5000)
     
