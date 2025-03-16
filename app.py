@@ -14,9 +14,15 @@ from waitress import serve
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
+base_dir = os.path.dirname(os.path.abspath(__file__))
+cnn_model_path = os.path.join(base_dir, 'Model', 'cnn_model.h5')
+resnet_model_path = os.path.join(base_dir, 'Model', 'resnet_model.h5')
+
+
 # Load your CNN and ResNet50 models
-cnn_model = tf.keras.models.load_model(r'Model\\cnn_model.h5')
-resnet_model = tf.keras.models.load_model(r'Model\\resnet_model.h5')
+#cnn_model = tf.keras.models.load_model(r'Model\\cnn_model.h5')
+cnn_model = tf.keras.models.load_model(cnn_model_path)
+resnet_model = tf.keras.models.load_model(resnet_model_path)
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
