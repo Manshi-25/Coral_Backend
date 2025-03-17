@@ -130,8 +130,13 @@ def predict():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8000))
-    serve(app, host='0.0.0.0', port=port)
+    port = int(os.environ.get('PORT', 5002))
+    logging.info(f"Starting the server on port {port}...")
+    try:
+        serve(app, host='0.0.0.0', port=port)
+        logging.info(f"Server is running on http://0.0.0.0:{port}")
+    except Exception as e:
+        logging.error(f"Failed to start the server: {e}")
     #from waitress import serve  # Use production server
     #serve(app, host="0.0.0.0", port=8000)
     #app.run(debug=True)
