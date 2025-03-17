@@ -18,18 +18,12 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 
-'''base_dir = os.path.dirname(os.path.abspath(__file__))
-model_dir = os.path.join(base_dir, 'Model')
-os.makedirs(model_dir, exist_ok=True)  # Ensure the Model directory exists
-
-cnn_model_path = os.path.join(model_dir, 'cnn_model.h5')
-resnet_model_path = os.path.join(model_dir, 'Model', 'resnet_model.h5')'''
-
 #google drive id
-cnn_model_id = "1pjOtsySu8LPLMvdI51SdkVJLQvagy8jq"
-#cnn_model_url =f"https://drive.google.com/uc?id={cnn_model_id}"
-resnet_model_id = "10h0M4NUtbBMWHKJ8JwQZaCpJlO42877h"
-#resnet_model_url = f"https://drive.google.com/uc?id={resnet_model_id}"
+cnn_model_id = "15vIAZg4NDlPang92i_Y5emB3I1FiX_Yg"
+resnet_model_id = "1p3HyCYacbCsgLv7X08aTPb-rbbHjRDvV"
+
+cnn_model_path = "C:\\newprograms\\All_Projects\\Corals_new\\Model\\cnn_model.tflite"
+resnet_model_path = "C:\\newprograms\\All_Projects\\Corals_new\\Model\\resnet_model.tflite"
 
 # Function to download model from Google Drive
 def download_model_from_drive(model_id, filename):
@@ -42,19 +36,17 @@ def download_model_from_drive(model_id, filename):
     else:
         print(f"Failed to download {filename}.")
 
-# Download and load models
-if not os.path.exists("cnn_model.h5"):
-    download_model_from_drive(cnn_model_id, "cnn_model.h5")
-if not os.path.exists("resnet_model.h5"):
-    download_model_from_drive(resnet_model_id, "resnet_model.h5")
+# Download models if they don't exist
+if not os.path.exists(cnn_model_path):
+    download_model_from_drive(cnn_model_id, cnn_model_path)
+if not os.path.exists(resnet_model_path):
+    download_model_from_drive(resnet_model_id, resnet_model_path)
 
-cnn_model = tf.keras.models.load_model("cnn_model.h5")
-resnet_model = tf.keras.models.load_model("resnet_model.h5")
+cnn_interpreter = tf.lite.Interpreter(model_path=cnn_model_path)
+cnn_interpreter.allocate_tensors()
 
-# Load your CNN and ResNet50 models
-#cnn_model = tf.keras.models.load_model(r'Model\\cnn_model.h5')
-#cnn_model = tf.keras.models.load_model(cnn_model_path)
-#resnet_model = tf.keras.models.load_model(resnet_model_path)
+resnet_interpreter = tf.lite.Interpreter(model_path=resnet_model_path)
+resnet_interpreter.allocate_tensors()
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -66,7 +58,16 @@ def preprocess_image(image):
     image = np.expand_dims(image, axis=0)
     return image
 
+# Function to run TFLite model
+def predict_with_tflite(interpreter, input_data):
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
 
+    interpreter.set_tensor(input_details[0]['index'], input_data)
+    interpreter.invoke()
+
+    output_data = interpreter.get_tensor(output_details[0]['index'])
+    return output_data
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -108,21 +109,15 @@ def predict():
     
         image = preprocess_image(image)'''
         
+        # Select model
+        interpreter = resnet_interpreter if model_type == "resnet" else cnn_interpreter
+        # model = resnet_model if model_type == "resnet" else cnn_model
+        
         # Make prediction based on the selected model
+        prediction = predict_with_tflite(interpreter, image)
+        #prediction = model.predict(image)
         
-        '''if model_type == 'cnn':
-            prediction = cnn_model.predict(image)
-        elif model_type == 'resnet':
-            prediction = resnet_model.predict(image)
-        else:
-            logging.error("Invalid model selected")
-            return jsonify({'error': 'Invalid model selected'}), 400
-        '''
-        
-        model = resnet_model if model_type == "resnet" else cnn_model
-        prediction = model.predict(image)
-        
-        # Process prediction result (example logic)
+        # Process prediction result 
         result = 'Bleached' if prediction[0][0] > 0.6 else 'Healthy'
         
         logging.debug(f"Prediction Result: {result}")
@@ -132,16 +127,9 @@ def predict():
         logging.error(f"Error during prediction: {e}")
         return jsonify({'error': str(e)}), 500
 
-
-
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
-    app.run(host="0.0.0.0", port=port)
-    #serve(app, host="0.0.0.0", port=port)
-    #from waitress import serve  # Use production server
-    #serve(app, host="0.0.0.0", port=8000)
-    #app.run(debug=True)
-    #app.run(debug=True, host ="0.0.0.0", port=5000)
+    serve(app,host="0.0.0.0", port=port)
     
 
     
