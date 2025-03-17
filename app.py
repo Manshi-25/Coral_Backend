@@ -67,9 +67,6 @@ def preprocess_image(image):
     return image
 
 
-@app.route("/")
-def home():
-    return "Flask app is running on Render!"
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -136,9 +133,9 @@ def predict():
         return jsonify({'error': str(e)}), 500
 
 
-port = int(os.environ.get('PORT', 8000))
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=port)
+#port = int(os.environ.get('PORT', 8000))
+#if __name__ == '__main__':
+    #app.run(host="0.0.0.0", port=port)
         #serve(app, host="0.0.0.0", port=port)
     #from waitress import serve  # Use production server
     #serve(app, host="0.0.0.0", port=8000)
