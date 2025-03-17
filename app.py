@@ -136,8 +136,8 @@ def predict():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
-    #app.run(host="0.0.0.0", port=port)
-    serve(app, host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port)
+    #serve(app, host="0.0.0.0", port=port)
     #from waitress import serve  # Use production server
     #serve(app, host="0.0.0.0", port=8000)
     #app.run(debug=True)
