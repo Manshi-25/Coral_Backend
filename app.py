@@ -17,9 +17,6 @@ from waitress import serve
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-@app.route("/")
-def home():
-    return "Flask app is running on Render!"
 
 '''base_dir = os.path.dirname(os.path.abspath(__file__))
 model_dir = os.path.join(base_dir, 'Model')
@@ -68,6 +65,11 @@ def preprocess_image(image):
     image = np.array(image, dtype=np.float32) / 255.0
     image = np.expand_dims(image, axis=0)
     return image
+
+
+@app.route("/")
+def home():
+    return "Flask app is running on Render!"
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -133,14 +135,10 @@ def predict():
         logging.error(f"Error during prediction: {e}")
         return jsonify({'error': str(e)}), 500
 
+
+port = int(os.environ.get('PORT', 8000))
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8000))
-    logging.info(f"Starting the server on port {port}...")
-    try:
-        serve(app, host='0.0.0.0', port=port)
-        logging.info(f"Server is running on http://0.0.0.0:{port}")
-    except Exception as e:
-        logging.error(f"Failed to start the server: {e}")
+        serve(app, host="0.0.0.0", port=port)
     #from waitress import serve  # Use production server
     #serve(app, host="0.0.0.0", port=8000)
     #app.run(debug=True)
