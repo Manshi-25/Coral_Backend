@@ -1,3 +1,4 @@
+
 import os
 from flask import Flask, request, jsonify
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -16,6 +17,9 @@ from waitress import serve
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
+@app.route("/")
+def home():
+    return "Flask app is running on Render!"
 
 '''base_dir = os.path.dirname(os.path.abspath(__file__))
 model_dir = os.path.join(base_dir, 'Model')
@@ -130,7 +134,7 @@ def predict():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5002))
+    port = int(os.environ.get('PORT', 8000))
     logging.info(f"Starting the server on port {port}...")
     try:
         serve(app, host='0.0.0.0', port=port)
