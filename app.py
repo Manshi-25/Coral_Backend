@@ -19,8 +19,8 @@ CORS(app)  # Enable CORS for all routes
 
 
 #google drive id
-cnn_model_id = "15vIAZg4NDlPang92i_Y5emB3I1FiX_Yg"
-resnet_model_id = "1p3HyCYacbCsgLv7X08aTPb-rbbHjRDvV"
+cnn_model_id = "18SJ_3mJYVnY9foDBE9TneBpoPVqrlSHx"
+resnet_model_id = "1dwfvB6a4mch2P5ZuuUWnV9cb0Nm35Wna"
 
 cnn_model_path = "C:\\newprograms\\All_Projects\\Corals_new\\Model\\cnn_model.tflite"
 resnet_model_path = "C:\\newprograms\\All_Projects\\Corals_new\\Model\\resnet_model.tflite"
