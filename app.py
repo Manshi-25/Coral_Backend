@@ -19,8 +19,8 @@ CORS(app)  # Enable CORS for all routes
 
 
 #google drive id
-cnn_model_id = "18SJ_3mJYVnY9foDBE9TneBpoPVqrlSHx"
-resnet_model_id = "1dwfvB6a4mch2P5ZuuUWnV9cb0Nm35Wna"
+cnn_model_id = "1HfQ0iqrFVe4_LkDVXdaBxqrBcFJm_3dR"
+resnet_model_id = "1oyxZJVOGo6WsckxdQzpEQPb2w8crWurI"
 
 cnn_model_path = "C:\\newprograms\\All_Projects\\Corals_new\\Model\\cnn_model.tflite"
 resnet_model_path = "C:\\newprograms\\All_Projects\\Corals_new\\Model\\resnet_model.tflite"
@@ -42,6 +42,7 @@ if not os.path.exists(cnn_model_path):
 if not os.path.exists(resnet_model_path):
     download_model_from_drive(resnet_model_id, resnet_model_path)
 
+#load TFlite models with correct identifier
 cnn_interpreter = tf.lite.Interpreter(model_path=cnn_model_path)
 cnn_interpreter.allocate_tensors()
 
