@@ -1,210 +1,147 @@
-
 import os
+import logging
 from flask import Flask, request, jsonify
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-import tensorflow as tf
+from flask_cors import CORS
 from PIL import Image
 import numpy as np
+from tensorflow.lite.python.interpreter import Interpreter  # Use TensorFlow Lite runtime for loading models
+from pymongo import MongoClient
 import logging
-from flask_cors import CORS
-from werkzeug.utils import secure_filename
-import gdown
-import requests
-import io
-from flask_cors import CORS
-from waitress import serve
+
+logging.getLogger("pymongo").setLevel(logging.WARNING)
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-
-#google drive id
-cnn_model_id = "1HfQ0iqrFVe4_LkDVXdaBxqrBcFJm_3dR"
-resnet_model_id = "1oyxZJVOGo6WsckxdQzpEQPb2w8crWurI"
-
-cnn_model_path = "C:\\newprograms\\All_Projects\\Corals_new\\Model\\cnn_model.tflite"
-resnet_model_path = "C:\\newprograms\\All_Projects\\Corals_new\\Model\\resnet_model.tflite"
-
-# Function to download model from Google Drive
-def download_model_from_drive(model_id, filename):
-    url = f"https://drive.google.com/uc?id={model_id}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(filename, "wb") as f:
-            f.write(response.content)
-        print(f"Model {filename} downloaded successfully.")
-    else:
-        print(f"Failed to download {filename}.")
-
-# Download models if they don't exist
-if not os.path.exists(cnn_model_path):
-    download_model_from_drive(cnn_model_id, cnn_model_path)
-if not os.path.exists(resnet_model_path):
-    download_model_from_drive(resnet_model_id, resnet_model_path)
-
-#load TFlite models with correct identifier
-cnn_interpreter = tf.lite.Interpreter(model_path=cnn_model_path)
-cnn_interpreter.allocate_tensors()
-
-resnet_interpreter = tf.lite.Interpreter(model_path=resnet_model_path)
-resnet_interpreter.allocate_tensors()
-
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 
-def preprocess_image(image):
-    # Resize and preprocess the image for the model
-    image = image.resize((128, 128))  # Adjust size as needed
-    image = np.array(image, dtype=np.float32) / 255.0
-    image = np.expand_dims(image, axis=0)
+# Paths to the TensorFlow Lite models
+cnn_model_path = "C:\\newprograms\\All_Projects\\Corals_new\\Model\\all_models\\cnn_model_TFL.tflite"
+resnet_model_path = "C:\\newprograms\\All_Projects\\Corals_new\Model\\all_models\\resnet50_model_TFL.tflite"
+densenet_model_path = "C:\\newprograms\\All_Projects\\Corals_new\\Model\\all_models\\densenet_model_TFL.tflite"
+efficientNet_model_path ="C:\\newprograms\\All_Projects\\Corals_new\Model\\all_models\\models\\saved_model\\efficientnet_float32.tflite"
+
+# Function to load TensorFlow Lite models
+def load_tflite_model(model_path):
+    interpreter = Interpreter(model_path=model_path)
+    interpreter.allocate_tensors()
+    return interpreter
+
+# Load the TensorFlow Lite models
+cnn_model = load_tflite_model(cnn_model_path)
+resnet_model = load_tflite_model(resnet_model_path)
+densenet_model= load_tflite_model(densenet_model_path)
+efficientNet_model= load_tflite_model(efficientNet_model_path)
+
+# Function to preprocess the image
+def preprocess_image(image,target_size):
+    
+    image = image.resize(target_size)  # Resize to match the input size of the models
+    image = np.array(image, dtype=np.float32) / 255.0  # Normalize pixel values
+    image = np.expand_dims(image, axis=0)  # Add batch dimension
     return image
 
-# Function to run TFLite model
+# Function to make predictions using TensorFlow Lite models
 def predict_with_tflite(interpreter, input_data):
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
+    
+    input_index = interpreter.get_input_details()[0]['index']
+    output_index = interpreter.get_output_details()[0]['index']
 
-    interpreter.set_tensor(input_details[0]['index'], input_data)
+    # Set the input tensor
+    interpreter.set_tensor(input_index, input_data)
+
+    # Run inference
     interpreter.invoke()
 
-    output_data = interpreter.get_tensor(output_details[0]['index'])
+    # Get the output tensor
+    output_data = interpreter.get_tensor(output_index)
     return output_data
+
+# MongoDB connection setup (if needed)
+MONGO_URI = "mongodb+srv://coral_health:TSSXDayCih0LKnrk@coral-health.om41rpe.mongodb.net"
+
+# Initialize MongoDB client
+client = MongoClient(MONGO_URI)
+db = client['coral_predictions']
+collection = db['results']
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Check if a file was uploaded
+    
     if 'file' not in request.files:
         logging.error("No file uploaded")
         return jsonify({'error': 'No file uploaded'}), 400
-    
+
     file = request.files['file']
-    
-    # Get the selected model
     model_type = request.form.get("model")
-    
-    print("Received Form Data:", request.form)
-    print("Model Selected:", request.form.get("model"))
-    print(f"Model received: '{model_type}' (Type: {type(model_type)})")
-     
-     
+
     logging.debug(f"Received request with model: {model_type}")
-    
-    # Check if the file is an image
+
     if file.filename == '':
         logging.error("No file selected")
         return jsonify({'error': 'No file selected or invalid type'}), 400
-    
-    if model_type not in ["resnet", "cnn"]:
-        return jsonify({"error": f"Invalid model choice: {model_type}. Choose 'resnet' or 'cnn'"}), 400
+
+    if model_type not in ["resnet", "cnn","densenet","efficientnet"]:
+        return jsonify({"error": f"Invalid model choice: {model_type}. Choose 'resnet', 'cnn', 'densenet',or 'efficientnet' "}), 400
 
     try:
-        # Open and preprocess the image
-        image = Image.open(file.stream)
-        image.verify()  # Verify that the file is a valid image
-        image = Image.open(file.stream)  # Reopen the file for processing
-        image = preprocess_image(image)
-       
-        ''' filename = secure_filename(file.filename)
-        filepath = os.path.join("uploads", filename)
-        file.save(filepath)
-    
-        image = preprocess_image(image)'''
-        
-        # Select model
-        interpreter = resnet_interpreter if model_type == "resnet" else cnn_interpreter
-        # model = resnet_model if model_type == "resnet" else cnn_model
-        
-        # Make prediction based on the selected model
+        if model_type == "resnet":
+            interpreter = resnet_model
+            input_size = (128,128)
+        elif model_type == "densenet":
+            interpreter = densenet_model
+            input_size = (128,128)
+        elif model_type == "efficientnet":
+            interpreter = efficientNet_model
+            input_size = (224,224)
+        else:
+            interpreter = cnn_model
+            input_size = (128,128)
+         
+        image = preprocess_image(Image.open(file.stream),input_size)
         prediction = predict_with_tflite(interpreter, image)
-        #prediction = model.predict(image)
-        
-        # Process prediction result 
-        result = 'Bleached' if prediction[0][0] > 0.6 else 'Healthy'
-        
-        logging.debug(f"Prediction Result: {result}")
-        return jsonify({'result': result})
-    
+
+        if model_type == "efficientnet":
+            # Apply softmax to logits
+            logits = prediction[0]
+            exp_scores = np.exp(logits - np.max(logits))  # for numerical stability
+            probs = exp_scores / np.sum(exp_scores)
+            print("Softmax Probabilities:", probs)
+            class_index = int(np.argmax(probs))
+            confidence = float(np.max(probs))
+
+        else:
+            # Sigmoid output
+            class_index = 1 if prediction[0][0] >= 0.5 else 0
+            confidence = float(prediction[0][0]) if class_index == 1 else 1 - float(prediction[0][0])
+
+        result = "Healthy" if class_index == 1 else "Bleached"
+
+        # Save prediction to MongoDB
+        collection.insert_one({
+            "model": model_type,
+            "result": result,
+            "confidence": confidence,
+            "filename": file.filename
+        })
+
+        return jsonify({
+            'result': result,
+            'confidence': float(f"{confidence * 100:.4f}")
+        })
+
     except Exception as e:
         logging.error(f"Error during prediction: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
-    serve(app,host="0.0.0.0", port=port)
-    
-
-    
-    
-
-'''from flask import Flask, request, jsonify
-import tensorflow as tf
-from PIL import Image
-import numpy as np
-import logging
-from flask_cors import CORS
-import os
-
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
-
-# Load updated models (update paths based on train_model.py)
-cnn_model = tf.keras.models.load_model(r'C:\\newprograms\\All_Projects\\Corals_new\\cnn_model.h5')
-resnet_model = tf.keras.models.load_model(r'C:\\newprograms\\All_Projects\\Corals_new\\resnet_model.h5')
-
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
-
-def preprocess_image(image):
-    """
-    Preprocess the image based on updated logic from train_model.py.
-    """
-    # Resize and preprocess the image for the model
-    image = image.resize((224, 224))  # Update size if train_model.py uses a different input size
-    image = np.array(image, dtype=np.float32) / 255.0
-    image = np.expand_dims(image, axis=0)
-    return image
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    """
-    Handle prediction requests.
-    """
-    if 'file' not in request.files:
-        logging.error("No file uploaded")
-        return jsonify({'error': 'No file uploaded'}), 400
-
-    file = request.files['file']
-    model_type = request.form.get("model")
-
-    logging.debug(f"Received request with model: {model_type}")
-
-    if file.filename == '':
-        logging.error("No file selected")
-        return jsonify({'error': 'No file selected or invalid type'}), 400
-
-    if model_type not in ["resnet", "cnn"]:
-        return jsonify({"error": f"Invalid model choice: {model_type}. Choose 'resnet' or 'cnn'"}), 400
-
+    logging.info(f"Starting the server on port {port}...")
     try:
-        # Open and preprocess the image
-        image = Image.open(file.stream)
-        image = preprocess_image(image)
-
-        # Select the model based on the request
-        model = resnet_model if model_type == "resnet" else cnn_model
-        prediction = model.predict(image)
-
-        # Process prediction result (update logic if train_model.py changes output format)
-        result = 'Healthy' if prediction[0][0] > 0.7 else 'Bleached'
-
-        logging.debug(f"Prediction Result: {result}")
-        return jsonify({'result': result})
-
+        from waitress import serve
+        serve(app, host="0.0.0.0", port=port)
+        logging.info(f"Server is running on http://0.0.0.0:{port}")
     except Exception as e:
-        logging.error(f"Error during prediction: {e}")
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
-    #app.run(debug=True, host="0.0.0.0", port=5000)
-    '''
+        logging.error(f"Failed to start the server: {e}")
+        
